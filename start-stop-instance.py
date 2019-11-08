@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import logging
 import os
@@ -6,7 +6,7 @@ import yaml
 import json
 
 from queue import Queue
-from threading import Thread
+from threading import Thread, Event
 from datetime import datetime
 from datetimerange import DateTimeRange
 
@@ -54,25 +54,27 @@ class StartStopWorker(Thread):
         self.queue = queue
 
     def run(self):
-        project, key, zone, instance, scheduler = self.queue.get()
-        info = {}
-        try:
-            week_day = scheduler['week_day'].split(",")
-            current_week_day = datetime.now().strftime('%a')
-            service = JobUtility.authenticate_google(key) 
-            is_active_hour = JobUtility.is_active_hour(scheduler['active_hours'])
-            
-            if current_week_day in week_day and is_active_hour:
-                request = service.instances().start(project=project, zone=zone, instance=instance)
-                response = request.execute()
-            else:
-                request = service.instances().stop(project=project, zone=zone, instance=instance)
-                response = request.execute()
-        except Exception as e: print(e)
-        finally:
-            self.queue.task_done()
+        while True:
+            project, key, zone, instance, scheduler = self.queue.get()
+            info = {}
+            try:
+                week_day = scheduler['week_day'].split(",")
+                current_week_day = datetime.now().strftime('%a')
+                service = JobUtility.authenticate_google(key) 
+                is_active_hour = JobUtility.is_active_hour(scheduler['active_hours'])
+                
+                if current_week_day in week_day and is_active_hour:
+                    request = service.instances().start(project=project, zone=zone, instance=instance)
+                    response = request.execute()
+                else:
+                    request = service.instances().stop(project=project, zone=zone, instance=instance)
+                    response = request.execute()
+            except Exception as e: print(e)
+            finally:
+                self.queue.task_done()
 
 def main():
+    quit_event = Event()
     queue = Queue()
     
     parser = ArgumentParser()
@@ -95,6 +97,7 @@ def main():
                         logger.info('Queueing {}, {}, {}, {}, {}'.format(project, value['key'], zone, instance, scheduler))
                         queue.put((project, value['key'], zone, instance, scheduler))
     
+    quit_event.set()
     queue.join()
 
 if __name__ == '__main__':
