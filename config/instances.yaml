@@ -1,0 +1,10 @@
+- poc-idev:
+   key: ./config/poc-idev.json
+   zones:
+      us-central1-a:
+         instance-1:
+            week_day: Mon,Tues,Wed,Thu,Fri,Sat,Sun
+            active_hours: 0-4,13-14
+         instance-2:
+            week_day: Mon,Tues,Wed,Fri,Sat,Sun
+            active_hours: 0-4,18-24
