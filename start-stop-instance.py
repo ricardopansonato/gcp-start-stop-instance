@@ -19,6 +19,8 @@ from argparse import ArgumentParser
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+HOME_PATH=os.path.dirname(sys.argv[0])
+
 class JobUtility(object):
     @staticmethod
     def convert_active_ranges(active_hours):
@@ -32,7 +34,7 @@ class JobUtility(object):
     
     @staticmethod
     def authenticate_google(key):
-        with open(key, "r") as data_file:
+        with open("{0}/{1}".format(HOME_PATH, key), "r") as data_file:
             info = json.loads(data_file.read())
         credentials = service_account.Credentials.from_service_account_info(info)
         return discovery.build('compute', 'v1', credentials=credentials, cache_discovery=False)
@@ -88,7 +90,7 @@ def main():
         worker.daemon = True
         worker.start()
     
-    with open(args.config) as file:
+    with open("{0}/{1}".format(HOME_PATH, args.config)) as file:
         config = yaml.full_load(file)
         for projects in config:
             for project, value in projects.items():
