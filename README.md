@@ -53,5 +53,5 @@ start-stop-instance.py -w 1 -c ./config/instances.yaml
 Add line below to cron:
 
 ```
-0 */30 * * * root /path/to/file/start-stop-instance.py -w 1 -c ./config/instances.yaml
+*/30 * * * * root /path/to/file/start-stop-instance.py -w 1 -c ./config/instances.yaml
 ```
