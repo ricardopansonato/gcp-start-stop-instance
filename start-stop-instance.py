@@ -35,7 +35,11 @@ class JobUtility(object):
     
     @staticmethod
     def authenticate_google(key):
-        with open("{0}/{1}".format(HOME_PATH, key), "r") as data_file:
+        if os.path.exists("{0}/{1}".format(HOME_PATH, key)):
+            config = "{0}/{1}".format(HOME_PATH, key)
+        elif os.path.exists(key):
+            config = args.config
+        with open(config, "r") as data_file:
             info = json.loads(data_file.read())
         credentials = service_account.Credentials.from_service_account_info(info)
         return discovery.build('compute', 'v1', credentials=credentials, cache_discovery=False)
@@ -66,12 +70,17 @@ class StartStopWorker(Thread):
                 service = JobUtility.authenticate_google(key) 
                 is_active_hour = JobUtility.is_active_hour(scheduler['active_hours'])
                 
+                request = service.instances().get(project=project, zone=zone, instance=instance)
+                status = request.execute()['status']
+                 
                 if current_week_day in week_day and is_active_hour:
-                    request = service.instances().start(project=project, zone=zone, instance=instance)
-                    response = request.execute()
+                    if status == 'TERMINATED':
+                        request = service.instances().start(project=project, zone=zone, instance=instance)
+                        response = request.execute()
                 else:
-                    request = service.instances().stop(project=project, zone=zone, instance=instance)
-                    response = request.execute()
+                    if status == 'RUNNING':
+                        request = service.instances().stop(project=project, zone=zone, instance=instance)
+                        response = request.execute()
             except Exception as e: print(e)
             finally:
                 self.queue.task_done()
@@ -81,17 +90,28 @@ def main():
     queue = Queue()
     
     parser = ArgumentParser()
-    parser.add_argument("-c", "--config", dest="config", help="path to config file", metavar="CONF")
-    parser.add_argument("-w", "--worker", dest="worker", help="number of workers", metavar="WORK")
+    parser.add_argument("-c", "--config", required=True, dest="config", help="path to config file", metavar="CONF")
+    parser.add_argument("-w", "--worker", required=True, dest="worker", help="number of workers", metavar="WORK")
     
     args = parser.parse_args()
     
+    if not args.worker.isdigit(): 
+        parser.print_help()   
+ 
+    if not os.path.exists("{0}/{1}".format(HOME_PATH, args.config)) and not os.path.exists(args.config):
+        parser.print_help()
+    
+    if os.path.exists("{0}/{1}".format(HOME_PATH, args.config)):
+        config = "{0}/{1}".format(HOME_PATH, args.config)
+    elif os.path.exists(args.config):
+        config = args.config
+
     for x in range(int(args.worker)):
         worker = StartStopWorker(queue)
         worker.daemon = True
         worker.start()
     
-    with open("{0}/{1}".format(HOME_PATH, args.config)) as file:
+    with open(config) as file:
         config = yaml.full_load(file)
         for projects in config:
             for project, value in projects.items():
