@@ -1,5 +1,5 @@
 cachetools==3.1.1
-certifi==2018.11.29
+certifi==2022.12.7
 chardet==3.0.4
 configparser==3.8.1
 DateTimeRange==0.6.1
